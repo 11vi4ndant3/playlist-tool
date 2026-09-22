@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 브라우저가 예전 버전을 보관해 두지 않도록 합니다 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>PLAYLIST MAKER</title>
+<style>
+  /* Pretendard – 필요한 굵기만 불러와 이미지 저장 속도를 높입니다 */
+  @font-face {
+    font-family: "Pretendard";
+    font-weight: 400; font-style: normal; font-display: swap;
+    src: url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Regular.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Pretendard";
+    font-weight: 500; font-style: normal; font-display: swap;
+    src: url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Medium.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Pretendard";
+    font-weight: 600; font-style: normal; font-display: swap;
+    src: url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-SemiBold.woff2") format("woff2");
+  }
+
+  :root {
+    --black: #000000;
+    --white: #FFFFFF;
+    --grey-100: #F4F4F4;
+    --grey-200: #E6E6E6;
+    --grey-400: #B5B5B5;
+    --grey-600: #7A7A7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--white); color: var(--black); }
+  body {
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  input, textarea, button { font: inherit; color: inherit; }
+  ul { list-style: none; }
+  .hidden-input { display: none; }
+  /* 사진을 넣기 전에는 이미지 자리를 완전히 숨깁니다 (깨진 이미지 아이콘 방지) */
+  img[hidden], img:not([src]) { display: none !important; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 96px;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 64px 40px 96px;
+    background: var(--white);
+  }
+
+  /* ---------- LP ---------- */
+  .record {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+  }
+  .vinyl {
+    position: absolute;
+    top: 0;
+    left: 21%;
+    width: 58%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: repeating-radial-gradient(circle at center, #000 0 2px, #151515 2px 3px);
+    z-index: 1;
+    display: grid;
+    place-items: center;
+  }
+  .vinyl-label {
+    position: relative;
+    width: 36%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--grey-200);
+    cursor: pointer;
+  }
+  .vinyl-label img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .vinyl-label::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 9%; aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: var(--white);
+  }
+  .sleeve {
+    position: absolute;
+    left: 18%; bottom: 0;
+    width: 64%;
+    aspect-ratio: 1;
+    z-index: 2;
+    background: var(--grey-100);
+    border: 1px solid var(--grey-200);
+    overflow: hidden;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+  /* 사진이 들어가면 테두리·바탕색을 없애 사진이 가장자리까지 꽉 차게 합니다 */
+  .sleeve.has-image, .thumb.has-image { border: 0; }
+  .vinyl-label.has-image { background: transparent; }
+  .sleeve img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .empty-hint { font-size: 13px; color: var(--grey-600); }
+  .has-image .empty-hint { display: none; }
+  .change-hint {
+    position: absolute;
+    right: 12px; bottom: 12px;
+    padding: 4px 10px;
+    font-size: 12px;
+    background: var(--white);
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .sleeve:hover .change-hint { opacity: 1; }
+  .sleeve:not(.has-image) .change-hint { display: none; }
+
+  .names {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 0;
+    border: 0;
+    border-bottom: 1px solid var(--black);
+    background: transparent;
+    font-size: 17px;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+  }
+  .names::placeholder { color: var(--grey-400); font-weight: 400; }
+
+  /* ---------- Playlist ---------- */
+  .playlist { margin-top: 20px; }
+  .row {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 10px 0;
+  }
+  .thumb {
+    position: relative;
+    width: 56px;
+    aspect-ratio: 1;
+    background: var(--grey-100);
+    border: 1px solid var(--grey-200);
+    overflow: hidden;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    color: var(--grey-400);
+  }
+  .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb.has-image svg { display: none; }
+  .fields { display: flex; flex-direction: column; min-width: 0; }
+  .fields input {
+    border: 0;
+    background: transparent;
+    outline: none;
+    padding: 1px 0;
+    width: 100%;
+  }
+  .fields .title { font-size: 16px; font-weight: 500; }
+  .fields .artist { font-size: 14px; color: var(--grey-600); }
+  .fields input::placeholder, .fields textarea::placeholder { color: var(--grey-400); font-weight: 400; }
+
+  .actions { display: flex; gap: 2px; }
+  .icon-btn {
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    border: 0;
+    background: transparent;
+    color: var(--grey-400);
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  .icon-btn:hover { color: var(--black); background: var(--grey-100); }
+  .icon-btn:focus-visible, .thumb:focus-visible, .sleeve:focus-visible,
+  .vinyl-label:focus-visible, .save-btn:focus-visible {
+    outline: 2px solid var(--black);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Lyrics ---------- */
+  .lyrics { display: flex; flex-direction: column; gap: 16px; }
+  .lyric {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) auto;
+    gap: 20px;
+    align-items: start;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--grey-200);
+  }
+  .lyric:first-child { padding-top: 0; }
+  .lyric:last-child { border-bottom: 0; padding-bottom: 0; }
+  .lyric .thumb { width: 88px; }
+  .lyric .title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .lyric textarea {
+    width: 100%;
+    height: calc(1.7em * 5 + 2px);
+    line-height: 1.7;
+    font-size: 15px;
+    border: 0;
+    resize: none;
+    overflow: hidden;
+    outline: none;
+    background: transparent;
+    white-space: pre-wrap;
+  }
+
+  /* ---------- Save ---------- */
+  .save-btn {
+    position: fixed;
+    right: 24px; bottom: 24px;
+    z-index: 10;
+    padding: 12px 20px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--black);
+    color: var(--white);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .save-btn:disabled { background: var(--grey-600); cursor: default; }
+
+  /* 휴대폰용 저장 미리보기 */
+  .preview {
+    position: fixed; inset: 0; z-index: 20;
+    display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 24px;
+    background: rgba(0, 0, 0, 0.85);
+  }
+  .preview.open { display: flex; }
+  .preview img { max-width: 100%; max-height: 72vh; background: var(--white); }
+  .preview p { color: var(--white); font-size: 14px; }
+  .preview-actions { display: flex; gap: 8px; }
+  .preview-actions a, .preview-actions button {
+    padding: 10px 18px; border-radius: 999px; border: 1px solid var(--white);
+    font-size: 14px; text-decoration: none; cursor: pointer;
+  }
+  .preview-actions a { background: var(--white); color: var(--black); }
+  .preview-actions button { background: transparent; color: var(--white); }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; gap: 72px; padding: 40px 20px 96px; }
+    .left { max-width: 300px; width: 100%; margin: 0 auto; }
+  }
+  @media (max-width: 480px) {
+    .lyric { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; }
+    .lyric .thumb { width: 64px; }
+  }
+</style>
+</head>
+<body>
+
+<main class="layout" id="capture">
+  <section class="left">
+    <div class="record">
+      <div class="vinyl">
+        <div class="vinyl-label" tabindex="0" role="button" aria-label="앨범아트 불러오기" data-cover-trigger>
+          <img alt="" data-cover-img hidden>
+        </div>
+      </div>
+      <div class="sleeve" tabindex="0" role="button" aria-label="앨범아트 불러오기" data-cover-trigger>
+        <img alt="" data-cover-img hidden>
+        <span class="empty-hint">클릭해서 사진 불러오기</span>
+        <span class="change-hint">사진 바꾸기</span>
+      </div>
+    </div>
+    <input type="file" accept="image/*" class="hidden-input" id="coverInput">
+    <input type="text" class="names" id="names" placeholder="이름을 입력하세요." autocomplete="off">
+
+    <ul class="playlist" id="playlist"></ul>
+  </section>
+
+  <section class="right">
+    <ul class="lyrics" id="lyrics"></ul>
+  </section>
+</main>
+
+<button type="button" class="save-btn" id="saveBtn">이미지로 저장</button>
+
+<div class="preview" id="preview" role="dialog" aria-label="이미지 저장">
+  <img id="previewImg" alt="완성된 플레이리스트 이미지">
+  <p>이미지를 길게 눌러 저장하세요.</p>
+  <div class="preview-actions">
+    <a id="previewDownload" download="playlist.png">다운로드</a>
+    <button type="button" id="previewClose">닫기</button>
+  </div>
+</div>
+
+<template id="songTpl">
+  <li class="row">
+    <label class="thumb" tabindex="0" aria-label="앨범아트 불러오기">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+      <img alt="" hidden>
+      <input type="file" accept="image/*" class="hidden-input">
+    </label>
+    <div class="fields">
+      <input type="text" class="title" placeholder="제목" autocomplete="off">
+      <input type="text" class="artist" placeholder="가수" autocomplete="off">
+    </div>
+    <div class="actions">
+      <button type="button" class="icon-btn" data-add aria-label="곡 추가">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button type="button" class="icon-btn" data-remove aria-label="곡 삭제">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+      </button>
+    </div>
+  </li>
+</template>
+
+<template id="lyricTpl">
+  <li class="lyric">
+    <label class="thumb" tabindex="0" aria-label="앨범아트 불러오기">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+      <img alt="" hidden>
+      <input type="file" accept="image/*" class="hidden-input">
+    </label>
+    <div class="fields">
+      <input type="text" class="title" placeholder="제목" autocomplete="off">
+      <textarea rows="5" autocomplete="off" placeholder="가사를 입력하세요 (최대 5줄)"></textarea>
+    </div>
+    <div class="actions">
+      <button type="button" class="icon-btn" data-add aria-label="가사 추가">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button type="button" class="icon-btn" data-remove aria-label="가사 삭제">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+      </button>
+    </div>
+  </li>
+</template>
+
+<script>
+(function () {
+  const STORE_KEY = 'playlist-maker-v1';
+  const MAX_LINES = 5;
+
+  let state = {
+    cover: '',
+    names: '',
+    songs: [{ art: '', title: '', artist: '' }],
+    lyrics: [{ art: '', title: '', text: '' }]
+  };
+
+  /* ---------- 저장하지 않음: 새로고침하거나 다시 들어오면 항상 빈 상태로 시작 ---------- */
+  try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }  // 예전 버전에서 저장된 내용 삭제
+  try { sessionStorage.clear(); } catch (e) { /* ignore */ }
+  // 뒤로가기로 돌아왔을 때 브라우저가 이전 화면을 그대로 보여주는 경우도 초기화
+  window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
+
+  /* ---------- image: square crop + downscale ---------- */
+  function readImage(file, maxSize) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const side = Math.min(img.width, img.height);
+          const sx = (img.width - side) / 2;
+          const sy = (img.height - side) / 2;
+          const size = Math.min(side, maxSize);
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = size;
+          canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/jpeg', 0.86));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function setImg(wrapper, img, src) {
+    if (src) { img.src = src; img.hidden = false; wrapper.classList.add('has-image'); }
+    else { img.removeAttribute('src'); img.hidden = true; wrapper.classList.remove('has-image'); }
+  }
+
+  function keyOpen(el, fn) {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); }
+    });
+  }
+
+  /* ---------- cover ---------- */
+  const coverInput = document.getElementById('coverInput');
+  const coverTriggers = document.querySelectorAll('[data-cover-trigger]');
+  function renderCover() {
+    coverTriggers.forEach(t => setImg(t, t.querySelector('[data-cover-img]'), state.cover));
+  }
+  coverTriggers.forEach(t => {
+    t.addEventListener('click', () => coverInput.click());
+    keyOpen(t, () => coverInput.click());
+  });
+  coverInput.addEventListener('change', async () => {
+    const file = coverInput.files[0];
+    if (!file) return;
+    state.cover = await readImage(file, 900);
+    renderCover();
+    coverInput.value = '';
+  });
+
+  const namesInput = document.getElementById('names');
+  namesInput.addEventListener('input', () => { state.names = namesInput.value; });
+
+  /* ---------- shared list helpers ---------- */
+  function bindThumb(li, item, maxSize) {
+    const label = li.querySelector('.thumb');
+    const img = label.querySelector('img');
+    const input = label.querySelector('input[type=file]');
+    setImg(label, img, item.art);
+    keyOpen(label, () => input.click());
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      if (!file) return;
+      item.art = await readImage(file, maxSize);
+      setImg(label, img, item.art);
+      input.value = '';
+    });
+  }
+
+  function bindActions(li, list, item, blank, render) {
+    li.querySelector('[data-add]').addEventListener('click', () => {
+      const i = list.indexOf(item);
+      list.splice(i + 1, 0, blank());
+      render(i + 1);
+    });
+    li.querySelector('[data-remove]').addEventListener('click', () => {
+      const i = list.indexOf(item);
+      if (list.length === 1) list[0] = blank();   // 마지막 한 칸은 비우기만 합니다
+      else list.splice(i, 1);
+      render(Math.max(0, i - 1));
+    });
+  }
+
+  /* ---------- playlist ---------- */
+  const playlistEl = document.getElementById('playlist');
+  const songTpl = document.getElementById('songTpl');
+  const blankSong = () => ({ art: '', title: '', artist: '' });
+
+  function renderSongs(focusIndex) {
+    playlistEl.innerHTML = '';
+    state.songs.forEach((song, idx) => {
+      const li = songTpl.content.firstElementChild.cloneNode(true);
+      li._item = song;
+      bindThumb(li, song, 240);
+      const title = li.querySelector('.title');
+      const artist = li.querySelector('.artist');
+      title.value = song.title;
+      artist.value = song.artist;
+      title.addEventListener('input', () => { song.title = title.value; });
+      artist.addEventListener('input', () => { song.artist = artist.value; });
+      bindActions(li, state.songs, song, blankSong, renderSongs);
+      playlistEl.appendChild(li);
+      if (idx === focusIndex) requestAnimationFrame(() => title.focus());
+    });
+  }
+
+  /* ---------- lyrics ---------- */
+  const lyricsEl = document.getElementById('lyrics');
+  const lyricTpl = document.getElementById('lyricTpl');
+  const blankLyric = () => ({ art: '', title: '', text: '' });
+
+  function fitsFiveLines(ta) {
+    return ta.value.split('\n').length <= MAX_LINES && ta.scrollHeight <= ta.clientHeight + 2;
+  }
+
+  function renderLyrics(focusIndex) {
+    lyricsEl.innerHTML = '';
+    state.lyrics.forEach((lyric, idx) => {
+      const li = lyricTpl.content.firstElementChild.cloneNode(true);
+      li._item = lyric;
+      bindThumb(li, lyric, 300);
+      const title = li.querySelector('.title');
+      const ta = li.querySelector('textarea');
+      title.value = lyric.title;
+      ta.value = lyric.text;
+      let lastValid = lyric.text;
+
+      title.addEventListener('input', () => { lyric.title = title.value; });
+      ta.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && ta.value.split('\n').length >= MAX_LINES) e.preventDefault();
+      });
+      ta.addEventListener('input', () => {
+        if (fitsFiveLines(ta)) {
+          lastValid = ta.value;
+        } else {
+          const pos = Math.max(0, ta.selectionStart - (ta.value.length - lastValid.length));
+          ta.value = lastValid;
+          ta.setSelectionRange(pos, pos);
+        }
+        lyric.text = ta.value;
+      });
+
+      bindActions(li, state.lyrics, lyric, blankLyric, renderLyrics);
+      lyricsEl.appendChild(li);
+      if (idx === focusIndex) requestAnimationFrame(() => title.focus());
+    });
+  }
+
+  /* ---------- save as image (외부 라이브러리 없이 캔버스로 직접 그립니다) ---------- */
+  const saveBtn = document.getElementById('saveBtn');
+  const FONT = '"Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+  const COL = { black: '#000000', white: '#FFFFFF', g100: '#F4F4F4', g200: '#E6E6E6', g600: '#7A7A7A', groove: '#151515' };
+  const f = (weight, size) => `${weight} ${size}px ${FONT}`;
+  const filled = item => Object.values(item).some(v => String(v || '').trim());
+
+  function loadImg(src) {
+    return new Promise(resolve => {
+      if (!src) return resolve(null);
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
+  function ellipsize(ctx, text, maxW) {
+    if (ctx.measureText(text).width <= maxW) return text;
+    let t = text;
+    while (t.length && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+    return t + '…';
+  }
+
+  // 화면과 비슷하게 줄바꿈: 한글은 글자 단위, 영문은 단어 단위
+  function wrapLines(ctx, text, maxW) {
+    const out = [];
+    text.split('\n').forEach(par => {
+      let line = '';
+      const pushChars = token => {
+        for (const ch of token) {
+          if (ctx.measureText(line + ch).width > maxW && line) { out.push(line); line = ch; }
+          else line += ch;
+        }
+      };
+      par.split(/(\s+)/).forEach(token => {
+        if (!token) return;
+        if (ctx.measureText(line + token).width <= maxW) { line += token; return; }
+        if (/^\s+$/.test(token)) { out.push(line); line = ''; return; }
+        if (/[\u3131-\uD79D]/.test(token) || ctx.measureText(token).width > maxW) { pushChars(token); return; }
+        if (line) out.push(line.replace(/\s+$/, ''));
+        line = token;
+      });
+      out.push(line);
+    });
+    return out;
+  }
+
+  function drawSquare(ctx, img, x, y, s) {
+    ctx.fillStyle = COL.g100;
+    ctx.fillRect(x, y, s, s);
+    if (img) { ctx.drawImage(img, x, y, s, s); return; }
+    ctx.strokeStyle = COL.g200;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, s - 1, s - 1);
+  }
+
+  function drawVinyl(ctx, cx, cy, d, img) {
+    const r = d / 2;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = COL.black; ctx.fill(); ctx.clip();
+    ctx.strokeStyle = COL.groove; ctx.lineWidth = 1;
+    for (let rr = 3; rr < r; rr += 3) { ctx.beginPath(); ctx.arc(cx, cy, rr - 0.5, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
+
+    const lr = d * 0.18;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, lr, 0, Math.PI * 2); ctx.clip();
+    if (img) ctx.drawImage(img, cx - lr, cy - lr, lr * 2, lr * 2);
+    else { ctx.fillStyle = COL.g200; ctx.fillRect(cx - lr, cy - lr, lr * 2, lr * 2); }
+    ctx.restore();
+
+    ctx.beginPath(); ctx.arc(cx, cy, lr * 0.09, 0, Math.PI * 2);
+    ctx.fillStyle = COL.white; ctx.fill();
+  }
+
+  async function buildCanvas() {
+    try {
+      await Promise.all([f(400, 15), f(500, 16), f(600, 16)].map(x => document.fonts.load(x, '가A')));
+    } catch (e) { /* 폰트를 못 불러와도 기본 글꼴로 그립니다 */ }
+
+    const MAX_W = 1200, PAD = 56, LW = 300, GAP = 96;
+    const RX = PAD + LW + GAP, RW_MAX = MAX_W - RX - PAD;
+    const songs = state.songs.filter(filled);
+    const lyrics = state.lyrics.filter(filled);
+
+    const cover = await loadImg(state.cover);
+    const songImgs = await Promise.all(songs.map(s => loadImg(s.art)));
+    const lyricImgs = await Promise.all(lyrics.map(l => loadImg(l.art)));
+
+    // --- 높이 계산 ---
+    const measure = document.createElement('canvas').getContext('2d');
+    measure.font = f(400, 15);
+    const LTHUMB = 88, LTEXT_X = LTHUMB + 20, LTEXT_W = RW_MAX - LTEXT_X, LH = 15 * 1.7;
+    const lyricLayouts = lyrics.map(l => {
+      const lines = wrapLines(measure, l.text || '', LTEXT_W).slice(0, 5);
+      while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+      const hasTitle = !!(l.title || '').trim();
+      return { lines, hasTitle, h: Math.max(LTHUMB, (hasTitle ? 32 : 0) + lines.length * LH) };
+    });
+
+    // 오른쪽 폭을 가장 긴 가사(또는 제목) 길이에 맞춰 줄입니다
+    let widest = 0;
+    lyrics.forEach((l, i) => {
+      measure.font = f(600, 16);
+      widest = Math.max(widest, measure.measureText((l.title || '').trim()).width);
+      measure.font = f(400, 15);
+      lyricLayouts[i].lines.forEach(line => { widest = Math.max(widest, measure.measureText(line).width); });
+    });
+    const RW = Math.min(RW_MAX, Math.max(360, Math.ceil(LTEXT_X + widest + 48)));
+    const W = RX + RW + PAD;
+
+    // 왼쪽: LP → 이름 → 구분선 → 노래 (간격을 좁게)
+    const NAMES_TOP = LW + 12, NAMES_H = 44, LIST_GAP = 20, ROW = 76;
+    const listTop = NAMES_TOP + NAMES_H + LIST_GAP;
+    const leftH = songs.length ? listTop + songs.length * ROW - 10 : NAMES_TOP + NAMES_H;
+
+    // 오른쪽: 마지막 카드 아래에는 구분선·여백을 두지 않음
+    const CARD_GAP = 20 + 1 + 16 + 20;   // 아래 여백 + 구분선 + 카드 간격 + 위 여백
+    const rightH = lyricLayouts.reduce((sum, L, i) => sum + L.h + (i ? CARD_GAP : 0), 0);
+
+    // 짧은 쪽을 긴 쪽의 세로 가운데에 맞춰 아래가 비지 않게 합니다
+    const contentH = Math.max(leftH, rightH);
+    const leftY = PAD + (contentH - leftH) / 2;
+    const rightY = PAD + (contentH - rightH) / 2;
+    const H = Math.ceil(contentH + PAD * 2);
+
+    // --- 그리기 ---
+    const SCALE = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = W * SCALE; canvas.height = H * SCALE;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(SCALE, SCALE);
+    ctx.fillStyle = COL.white; ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = 'top';
+
+    // LP + 케이스
+    const d = LW * 0.58;
+    drawVinyl(ctx, PAD + LW / 2, leftY + d / 2, d, cover);
+    const s = LW * 0.64;
+    drawSquare(ctx, cover, PAD + LW * 0.18, leftY + LW - s, s);
+
+    // 이름 + 구분선
+    const namesY = leftY + NAMES_TOP;
+    if (state.names.trim()) {
+      ctx.font = f(600, 17); ctx.fillStyle = COL.black; ctx.textAlign = 'center';
+      ctx.fillText(ellipsize(ctx, state.names.trim(), LW), PAD + LW / 2, namesY + 11);
+      ctx.textAlign = 'left';
+    }
+    ctx.fillStyle = COL.black; ctx.fillRect(PAD, namesY + NAMES_H - 1, LW, 1);
+
+    // 플레이리스트
+    songs.forEach((song, i) => {
+      const y = leftY + listTop + i * ROW;
+      drawSquare(ctx, songImgs[i], PAD, y + 10, 56);
+      const tx = PAD + 72, tw = LW - 72;
+      ctx.fillStyle = COL.black; ctx.font = f(500, 16);
+      ctx.fillText(ellipsize(ctx, song.title || '', tw), tx, y + 19);
+      ctx.fillStyle = COL.g600; ctx.font = f(400, 14);
+      ctx.fillText(ellipsize(ctx, song.artist || '', tw), tx, y + 43);
+    });
+
+    // 가사
+    let top = rightY;
+    lyrics.forEach((l, i) => {
+      const L = lyricLayouts[i];
+      drawSquare(ctx, lyricImgs[i], RX, top, LTHUMB);
+      const tx = RX + LTEXT_X;
+      let ty = top;
+      if (L.hasTitle) {
+        ctx.fillStyle = COL.black; ctx.font = f(600, 16);
+        ctx.fillText(ellipsize(ctx, l.title.trim(), LTEXT_W), tx, ty + 4);
+        ty += 32;
+      }
+      ctx.fillStyle = COL.black; ctx.font = f(400, 15);
+      L.lines.forEach((line, k) => ctx.fillText(line, tx, ty + k * LH + (LH - 15) / 2));
+      if (i < lyrics.length - 1) {
+        ctx.fillStyle = COL.g200; ctx.fillRect(RX, top + L.h + 20, RW, 1);
+      }
+      top += L.h + CARD_GAP;
+    });
+
+    return canvas;
+  }
+
+  const preview = document.getElementById('preview');
+  const previewImg = document.getElementById('previewImg');
+  const previewDownload = document.getElementById('previewDownload');
+  document.getElementById('previewClose').addEventListener('click', () => preview.classList.remove('open'));
+
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    saveBtn.textContent = '저장 중…';
+    try {
+      const canvas = await buildCanvas();
+      const dataUrl = canvas.toDataURL('image/png');
+      const isTouch = window.matchMedia('(pointer: coarse)').matches;
+      if (isTouch) {
+        // 휴대폰에서는 미리보기를 띄워 길게 눌러 저장할 수 있게 합니다
+        previewImg.src = dataUrl;
+        previewDownload.href = dataUrl;
+        preview.classList.add('open');
+      } else {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = 'playlist.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    } catch (e) {
+      console.error(e);
+      alert('이미지를 만들지 못했습니다: ' + (e && e.message ? e.message : e));
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '이미지로 저장';
+    }
+  });
+
+  /* ---------- init: 항상 빈 상태로 시작 ---------- */
+  document.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
+  renderCover();
+  renderSongs(-1);
+  renderLyrics(-1);
+})();
+</script>
+</body>
+</html>
