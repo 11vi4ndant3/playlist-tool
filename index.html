@@ -55,6 +55,34 @@
     padding: 64px 40px 96px;
   }
 
+
+  /* ---------- 사용 안내 (저장 이미지에는 포함되지 않음) ---------- */
+  .guide-wrap { max-width: 1120px; margin: 0 auto; padding: 32px 40px 0; }
+  .guide {
+    position: relative;
+    padding: 18px 48px 18px 22px;
+    border: 1px solid var(--grey-200);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--grey-600);
+  }
+  .guide-title { font-weight: 600; color: var(--black); margin-bottom: 6px; }
+  .guide ul { display: flex; flex-direction: column; gap: 2px; }
+  .guide li { position: relative; padding-left: 14px; }
+  .guide li::before { content: "–"; position: absolute; left: 0; color: var(--grey-400); }
+  .guide b { font-weight: 600; color: var(--black); }
+  .guide-close {
+    position: absolute; top: 10px; right: 10px;
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    border: 0; background: transparent; border-radius: 4px;
+    color: var(--grey-400); cursor: pointer;
+  }
+  .guide-close:hover { color: var(--black); background: var(--grey-100); }
+  .guide-close:focus-visible { outline: 2px solid var(--black); outline-offset: 2px; }
+  .guide-wrap[hidden] { display: none; }
+  .guide-wrap:not([hidden]) + .layout { padding-top: 40px; }
+
   /* ---------- LP ---------- */
   .record { position: relative; width: 100%; aspect-ratio: 1 / 1; }
   .vinyl {
@@ -265,6 +293,7 @@
 
   @media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; gap: 72px; padding: 40px 20px 96px; }
+    .guide-wrap { padding: 20px 20px 0; }
     .left { max-width: 300px; width: 100%; margin: 0 auto; }
   }
   @media (max-width: 480px) {
@@ -274,6 +303,21 @@
 </style>
 </head>
 <body>
+
+<aside class="guide-wrap" id="guide">
+  <div class="guide">
+    <p class="guide-title">사용 안내</p>
+    <ul>
+      <li><b>LP 사진</b> — 사진을 드래그하면 위치가, 마우스 휠(휴대폰은 두 손가락)을 움직이면 크기가 바뀌어요. LP 가운데 사진도 함께 조정되고, 더블클릭하면 처음 상태로 돌아가요.</li>
+      <li><b>곡 추가·삭제</b> — 왼쪽 플레이리스트의 + 와 휴지통 버튼으로만 할 수 있어요. 앨범아트와 제목은 왼쪽·오른쪽 어디서 입력해도 양쪽에 자동으로 반영돼요.</li>
+      <li><b>순서 바꾸기</b> — 곡 앞의 ⠿ 손잡이를 잡고 위아래로 끌어 보세요. 오른쪽 가사도 같은 순서로 따라와요.</li>
+      <li><b>저장</b> — 새로고침하면 내용이 모두 사라지니, 완성하면 오른쪽 아래 ‘이미지로 저장’을 눌러 주세요. 이 안내는 저장 이미지에 포함되지 않아요.</li>
+    </ul>
+    <button type="button" class="guide-close" id="guideClose" aria-label="안내 닫기">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+</aside>
 
 <main class="layout">
   <section class="left">
@@ -900,6 +944,10 @@
       saveBtn.disabled = false;
       saveBtn.textContent = '이미지로 저장';
     }
+  });
+
+  document.getElementById('guideClose').addEventListener('click', () => {
+    document.getElementById('guide').hidden = true;
   });
 
   /* ---------- init: 항상 빈 상태로 시작 ---------- */
